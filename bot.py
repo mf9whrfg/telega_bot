@@ -1,5 +1,7 @@
 import logging
 import os
+import threading
+from flask import Flask
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -10,6 +12,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+
+app = Flask(__name__)
+
+@app.route('/')
+def health_check():
+    return 'Bot is running!'
+
+def run_web_server():
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text('Привет! Я эхо-бот. Напиши любое сообщение, и я его повторю.')
@@ -26,6 +38,10 @@ if __name__ == '__main__':
     if not BOT_TOKEN:
         logger.error('Переменная окружения TELEGRAM_BOT_TOKEN не установлена.')
         raise SystemExit('Установите TELEGRAM_BOT_TOKEN перед запуском.')
+
+    # Start web server in a separate thread
+    web_thread = threading.Thread(target=run_web_server)
+    web_thread.start()
 
     application = ApplicationBuilder().token(BOT_TOKEN).build()
 
